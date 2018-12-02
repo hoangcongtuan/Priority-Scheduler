@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Tooltip?>
@@ -11,7 +12,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane id="AnchorPane" prefHeight="458.0" prefWidth="531.0" xmlns="http://javafx.com/javafx/8.0.172-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="main.FXMainController">
+<AnchorPane id="AnchorPane" prefHeight="458.0" prefWidth="531.0" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="main.FXMainController">
     <children>
         <VBox alignment="TOP_CENTER" layoutX="10.0" layoutY="5.0" prefHeight="453.0" prefWidth="371.0" spacing="5.0">
             <children>
@@ -20,7 +21,7 @@
                         <Tooltip text="(Burst Time, Delay Time, Priority, Level) or for random input type &quot;Random #process&quot;" />
                     </tooltip>
                 </Label>
-                <TextArea fx:id="input" prefHeight="422.0" prefWidth="371.0" />
+                <TextArea fx:id="input" prefHeight="396.0" prefWidth="371.0" />
                 <Label fx:id="status" prefHeight="8.0" prefWidth="226.0" text="Load From File or Write &quot;Random #processes&quot;">
                     <font>
                         <Font size="10.0" />
@@ -33,7 +34,7 @@
         </VBox>
         <VBox alignment="TOP_CENTER" layoutX="391.0" layoutY="5.0" prefHeight="453.0" prefWidth="130.0" spacing="5.0">
             <children>
-                <ChoiceBox fx:id="schMethod" onAction="#choiceBoxAction" prefHeight="27.0" prefWidth="129.0" />
+                <ChoiceBox fx:id="schMethod" prefHeight="27.0" prefWidth="129.0" />
                 <VBox prefHeight="37.0" prefWidth="130.0">
                     <children>
                         <Label text="Simulation Speed: " />
@@ -65,5 +66,23 @@
                 <Insets top="20.0" />
             </padding>
         </VBox>
+      <VBox alignment="TOP_CENTER" layoutX="533.0" layoutY="7.0" prefHeight="446.0" prefWidth="681.0" spacing="5.0">
+         <children>
+            <Label alignment="TOP_CENTER" text="Simulation" />
+            <VBox prefHeight="438.0" prefWidth="550.0">
+               <children>
+                  <ScrollPane fx:id="scroll" prefHeight="425.0" prefWidth="550.0">
+                     <content>
+                        <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="403.0" prefWidth="532.0" />
+                     </content>
+                  </ScrollPane>
+               </children>
+            </VBox>
+            <Button fx:id="backButton" mnemonicParsing="false" onAction="#handleBackButtonAction" text="Back" />
+         </children>
+         <padding>
+            <Insets right="10.0" />
+         </padding>
+      </VBox>
     </children>
 </AnchorPane>

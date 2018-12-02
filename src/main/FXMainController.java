@@ -49,8 +49,6 @@ public class FXMainController implements Initializable {
     @FXML
     private TextField cs;
 
-    private static ArrayList<String> schLevels = new ArrayList<>();
-
     private static String prevInput = "";
 
     private static CPU cpu;
@@ -60,15 +58,15 @@ public class FXMainController implements Initializable {
     @FXML
     private void handleRunButtonAction(ActionEvent event) {
 
-        if(validate() == "OK"){
-            status.setText ("OK");
+        if (validate() == "OK") {
+            status.setText("OK");
             status.setTextFill(Color.DARKGREEN);
             String method = schMethod.getValue().toString();
 
-            if(input.getText().startsWith("Random")){
+            if (input.getText().startsWith("Random")) {
                 status.setText("Error: Randomize First (press Random Input button)");
                 status.setTextFill(Color.RED);
-            }else{
+            } else {
                 cpu = new CPU(input.getText(), method);
                 prevInput = input.getText();
                 cpu.Simulate();
@@ -76,14 +74,14 @@ public class FXMainController implements Initializable {
                 try {
                     Parent root = FXMLLoader.load(getClass().getResource("Simulation.fxml"));
                     Scene scene = new Scene(root);
-                    Stage stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+                    Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
                     stage.setScene(scene);
                     stage.show();
                 } catch (IOException ex) {
                     Logger.getLogger(FXMainController.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-        }else{
+        } else {
             status.setText(validate());
             status.setTextFill(Color.RED);
         }
@@ -92,7 +90,7 @@ public class FXMainController implements Initializable {
     @FXML
     private void handleRandomInputButtonAction(ActionEvent event) {
 
-        if(input.getText().startsWith("Random")){
+        if (input.getText().startsWith("Random")) {
             status.setText("OK");
             status.setTextFill(Color.DARKGREEN);
             String[] line = input.getText().split("\n");
@@ -103,7 +101,7 @@ public class FXMainController implements Initializable {
                 res += string + "\n";
             }
             input.setText(res);
-        }else{
+        } else {
             CPU.randProc(Integer.valueOf(5));
             String res = "";
             for (String string : cpu.getRandomData()) {
@@ -123,7 +121,7 @@ public class FXMainController implements Initializable {
 
         Stage primaryStage = new Stage();
         File file = fileChooser.showOpenDialog(primaryStage);
-        if(file != null){
+        if (file != null) {
             String s = "", res = "";
             double burstTime = 0, delayTime = 0;
             int priority = 0, level = 0;
@@ -145,61 +143,53 @@ public class FXMainController implements Initializable {
         }
     }
 
-    @FXML
-    private void choiceBoxAction(ActionEvent event){
-                input.setPrefHeight(650);
-                run.setTranslateY(5);
-                reloadFile.setTranslateY(5);
-                randomInput.setTranslateY(5);
-    }
-
     public EventHandler<KeyEvent> numericValidation(final Integer max_Lengh) {
         return e -> {
             TextField txt_TextField = (TextField) e.getSource();
             if (txt_TextField.getText().length() >= max_Lengh) {
                 e.consume();
             }
-            if(e.getCharacter().matches("[0-9.]")){
-                if(txt_TextField.getText().contains(".") && e.getCharacter().matches("[.]")){
+            if (e.getCharacter().matches("[0-9.]")) {
+                if (txt_TextField.getText().contains(".") && e.getCharacter().matches("[.]")) {
                     e.consume();
-                }else if(txt_TextField.getText().length() == 0 && e.getCharacter().matches("[.]")){
+                } else if (txt_TextField.getText().length() == 0 && e.getCharacter().matches("[.]")) {
                     e.consume();
                 }
-            }else{
+            } else {
                 e.consume();
             }
         };
     }
 
-    public String validate(){
+    public String validate() {
 
         String inputCheck = input.getText();
         String lines[] = inputCheck.split("\n");
 
-        if(lines.length == 0){
+        if (lines.length == 0) {
             return "Error: No Input";
-        }else if(lines[0].startsWith("Random")){
+        } else if (lines[0].startsWith("Random")) {
             String split[] = lines[0].split("\\s+");
-            try{
+            try {
                 Integer.valueOf(split[1]);
-            }catch(Exception e){
+            } catch (Exception e) {
                 return "Error: Bad Input for Random";
             }
-        }else{
+        } else {
             int level = 0;
-            try{
+            try {
                 for (String line : lines) {
                     String[] split = line.split("\\s+");
                     Double.parseDouble(split[0]);
                     Double.parseDouble(split[1]);
                     Integer.parseInt(split[2]);
                 }
-            }catch(Exception e){
+            } catch (Exception e) {
                 return "Error: Bad Input";
             }
         }
 
-        if(Double.parseDouble(cs.getText()) < 0.4){
+        if (Double.parseDouble(cs.getText()) < 0.4) {
             return "Error: minimum value for quantum is 0.4";
         }
 
@@ -225,7 +215,7 @@ public class FXMainController implements Initializable {
         return cpu;
     }
 
-    public static double getSpeed(){
+    public static double getSpeed() {
         return speed;
     }
 }
