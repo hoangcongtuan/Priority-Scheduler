@@ -9,7 +9,6 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
@@ -18,7 +17,7 @@
 
 <AnchorPane id="AnchorPane" prefHeight="585.0" prefWidth="1214.0" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="main.FXMainController">
     <children>
-        <VBox alignment="TOP_CENTER" layoutX="7.0" layoutY="5.0" prefHeight="585.0" prefWidth="374.0" spacing="5.0">
+        <VBox alignment="TOP_CENTER" layoutX="7.0" layoutY="5.0" prefHeight="585.0" prefWidth="415.0" spacing="5.0">
             <children>
                 <Label text="Processes">
                     <tooltip>
@@ -42,30 +41,13 @@
                 <Insets bottom="10.0" />
             </padding>
         </VBox>
-        <VBox alignment="TOP_CENTER" layoutX="391.0" layoutY="5.0" prefHeight="453.0" prefWidth="130.0" spacing="5.0">
+        <VBox alignment="TOP_CENTER" layoutX="446.0" layoutY="4.0" prefHeight="559.0" prefWidth="130.0" spacing="5.0">
             <children>
                 <ChoiceBox fx:id="schMethod" prefHeight="27.0" prefWidth="129.0" />
-                <VBox prefHeight="37.0" prefWidth="130.0">
-                    <children>
-                        <Label text="Simulation Speed: " />
-                        <TextField fx:id="simulationSpeed" prefHeight="21.0" prefWidth="130.0" text="1" />
-                    </children>
-                </VBox>
-                <VBox prefHeight="38.0" prefWidth="130.0" spacing="2.0">
-                    <children>
-                        <Label text="CS: ">
-                            <tooltip>
-                                <Tooltip text="Contex Switch Duration (min is 0.4)" />
-                            </tooltip>
-                        </Label>
-                        <TextField fx:id="contextSwitchTime" text="0.4" />
-                    </children>
-                </VBox>
-                <VBox alignment="CENTER" prefHeight="200.0" prefWidth="100.0" spacing="5.0">
+                <VBox alignment="CENTER" prefHeight="123.0" prefWidth="130.0" spacing="5.0">
                     <children>
                         <Button fx:id="runButton" mnemonicParsing="false" onAction="#handleRunButtonAction" text="Run" />
                         <Button fx:id="randomInput" mnemonicParsing="false" onAction="#handleRandomInputButtonAction" text="Random Input" />
-                        <Button fx:id="loadFile" mnemonicParsing="false" onAction="#handleLoadFileButtonAction" text="Load File" />
                     </children>
                     <VBox.margin>
                         <Insets bottom="10.0" />
@@ -76,7 +58,7 @@
                 <Insets top="20.0" />
             </padding>
         </VBox>
-      <VBox alignment="TOP_CENTER" layoutX="533.0" layoutY="7.0" prefHeight="585.0" prefWidth="681.0" spacing="5.0">
+      <VBox alignment="TOP_CENTER" layoutX="588.0" layoutY="7.0" prefHeight="585.0" prefWidth="626.0" spacing="5.0">
          <children>
             <Label alignment="TOP_CENTER" text="Simulation" />
             <VBox prefHeight="438.0" prefWidth="550.0">
@@ -108,7 +90,7 @@
                </children>
             </HBox>
             <Label fx:id="lbCurrentTime" text="Label" />
-            <Canvas fx:id="canvas" height="186.0" width="661.0" />
+            <Canvas fx:id="ganttCanvas" height="186.0" width="661.0" />
          </children>
          <padding>
             <Insets right="10.0" />

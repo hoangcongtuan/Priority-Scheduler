@@ -148,6 +148,8 @@ public class CPU {
                 //swithc to another process
                 x_cursor += LABEL_PADDING;
                 gContext.fillOval(x_cursor, gHeight / 2 - POINT_SIZE / 2, POINT_SIZE, POINT_SIZE);
+
+
                 gContext.fillText("P" + activeProc.getPID(), x_cursor, gHeight / 2 - 10);
                 gContext.fillText(currentTime + "", x_cursor, gHeight / 2 + 20);
             }

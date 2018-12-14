@@ -72,7 +72,7 @@ public class Process {
         }
 
         if(curTime != timeNow){
-            burstTime-=1e-1;
+            burstTime -= 1e-1;
             turnAroundTime+=1e-1;
         }
         

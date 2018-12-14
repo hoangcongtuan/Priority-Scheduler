@@ -27,35 +27,23 @@ import java.util.*;
 
 public class FXMainController implements Initializable {
 
+    @FXML
     public TableView tableProcess;
-    public Canvas canvas;
+    @FXML
+    public Canvas ganttCanvas;
+    @FXML
     public Label lbCurrentTime;
     @FXML
     private Label status;
-
     @FXML
     private Button runButton;
-
-    @FXML
-    private Button randomInput;
-
-    @FXML
-    private Button loadFile;
-
     @FXML
     private TextArea input;
-
     @FXML
     private ChoiceBox schMethod;
 
-    @FXML
-    private TextField simulationSpeed;
-
-    @FXML
-    private TextField contextSwitchTime;
 
     private static CPU cpu;
-
     private static double speed;
 
     /**
@@ -63,16 +51,13 @@ public class FXMainController implements Initializable {
      */
     @FXML
     private Button stopButton;
-
     @FXML
     private Button pauseResumeButton;
-
     @FXML
     private ScrollPane scroll;
-
     private VBox processBox;
 
-    private static long lastUpdate = 0;
+    private static long lastUpdateTime = 0;
     private VBox subroot1;
     private SimulationCore simulationCore;
     private Map<Integer, Integer> procBarsTable = new HashMap<>();
@@ -81,8 +66,7 @@ public class FXMainController implements Initializable {
 
     @FXML
     private void handleRunButtonAction(ActionEvent event) {
-
-        if (validate() == "OK") {
+        if (validate().equals("OK")) {
             status.setText("OK");
             status.setTextFill(Color.DARKGREEN);
             String method = schMethod.getValue().toString();
@@ -91,14 +75,14 @@ public class FXMainController implements Initializable {
                 status.setText("Error: Randomize First (press Random Input button)");
                 status.setTextFill(Color.RED);
             } else {
-                GraphicsContext gContext = canvas.getGraphicsContext2D();
-                gContext.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-                initGiantChart(gContext);
+                GraphicsContext gContext = ganttCanvas.getGraphicsContext2D();
+                gContext.clearRect(0, 0, ganttCanvas.getWidth(), ganttCanvas.getHeight());
+                initGanttChart(gContext);
                 cpu = new CPU(input.getText(), method);
                 doSomeThingWithProcessList(cpu.getAllProcs());
 
                 cpu.Simulate();
-                speed = Double.parseDouble(simulationSpeed.getText());
+                speed = 1;
                 startSimulation();
             }
         } else {
@@ -114,15 +98,14 @@ public class FXMainController implements Initializable {
 
     @FXML
     private void handleRandomInputButtonAction(ActionEvent event) {
-
         if (input.getText().startsWith("Random")) {
             status.setText("OK");
             status.setTextFill(Color.DARKGREEN);
-            String[] line = input.getText().split("\n");
-            String[] split = line[0].split("\\s+");
+            String[] lines = input.getText().split("\n");
+            String[] split = lines[0].split("\\s+");
             CPU.randProc(Integer.valueOf(split[1]));
             String res = "";
-            for (String string : cpu.getRandomData()) {
+            for (String string : CPU.getRandomData()) {
                 res += string + "\n";
             }
             input.setText(res);
@@ -140,57 +123,7 @@ public class FXMainController implements Initializable {
         doSomeThingWithProcessList(cpu.getAllProcs());
     }
 
-    @FXML
-    private void handleLoadFileButtonAction(ActionEvent event) {
-
-        FileChooser fileChooser = new FileChooser();
-
-        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("TXT files (*.txt)", "*.txt");
-        fileChooser.getExtensionFilters().add(extFilter);
-
-        Stage primaryStage = new Stage();
-        File file = fileChooser.showOpenDialog(primaryStage);
-        if (file != null) {
-            String s = "", res = "";
-            double burstTime = 0, delayTime = 0;
-            int priority = 0;
-            try {
-                BufferedReader input = new BufferedReader(new FileReader(file));
-                while ((s = input.readLine()) != null) {
-                    String[] split = s.split("\\s+");
-                    burstTime = Double.parseDouble(split[0]);
-                    delayTime = Double.parseDouble(split[1]);
-                    priority = Integer.parseInt(split[2]);
-                    res += burstTime + " " + delayTime + " " + priority + "\n";
-                }
-                this.input.setText(res);
-            } catch (Exception e) {
-                status.setText("Error: Bad Input File Format");
-                status.setTextFill(Color.RED);
-            }
-        }
-    }
-
-    public EventHandler<KeyEvent> numericValidation(final Integer max_Lengh) {
-        return e -> {
-            TextField txt_TextField = (TextField) e.getSource();
-            if (txt_TextField.getText().length() >= max_Lengh) {
-                e.consume();
-            }
-            if (e.getCharacter().matches("[0-9.]")) {
-                if (txt_TextField.getText().contains(".") && e.getCharacter().matches("[.]")) {
-                    e.consume();
-                } else if (txt_TextField.getText().length() == 0 && e.getCharacter().matches("[.]")) {
-                    e.consume();
-                }
-            } else {
-                e.consume();
-            }
-        };
-    }
-
-    public String validate() {
-
+    private String validate() {
         String inputCheck = input.getText();
         String lines[] = inputCheck.split("\n");
 
@@ -216,23 +149,16 @@ public class FXMainController implements Initializable {
             }
         }
 
-        if (Double.parseDouble(contextSwitchTime.getText()) < 0.4) {
-            return "Error: minimum value for quantum is 0.4";
-        }
-
         return "OK";
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        GraphicsContext gContext = canvas.getGraphicsContext2D();
-        initGiantChart(gContext);
+        GraphicsContext gContext = ganttCanvas.getGraphicsContext2D();
+        initGanttChart(gContext);
         CPU.setGraphicsContext(gContext);
 
         initTableProcess();
-
-        simulationSpeed.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(2));
-        contextSwitchTime.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(5));
 
         schMethod.getItems().removeAll(schMethod.getItems());
         schMethod.getItems().addAll("Preemptive Priority", "Priority");
@@ -252,57 +178,72 @@ public class FXMainController implements Initializable {
         simulationCore = new SimulationCore() {
             @Override
             public void handle(long now) {
-                if (now - lastUpdate >= 28_000_000 * (1/FXMainController.getSpeed())){
+                if (now - lastUpdateTime >= 28_000_000 * (1 / FXMainController.getSpeed())) {
                     ProgressBar tmp;
                     String strtmp = "";
                     if (getScanner().hasNextLine()) {
                         String line = getScanner().nextLine();
                         String[] splt = line.split("\\s+");
-                        if(procBarsTable.containsKey(Integer.valueOf(splt[1]))){
+
+                        int pid = Integer.valueOf(splt[1]);
+                        double burstTime = Double.valueOf(splt[2]);
+                        double totalBurstTime = Double.valueOf(splt[3]);
+                        int priority = Integer.valueOf(splt[4]);
+                        double arrivalTime = Double.valueOf(splt[5]);
+                        double startTime = Double.valueOf(splt[6]);
+                        double finishTime = Double.valueOf(splt[7]);
+                        double waitTime = Double.valueOf(splt[8]);
+                        double turnAroundTime = Double.valueOf(splt[9]);
+                        double responseTime = Double.valueOf(splt[10]);
+
+                        if (procBarsTable.containsKey(Integer.valueOf(splt[1]))) {
                             strtmp = "";
                             strtmp += splt[1] + ": ";
-                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[8])) + " ";
-                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[9])) + " - ";
-                            strtmp += "Priority:" + splt[4] + " ";
-                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
-                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[6])) + " ";
-                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[7]));
-                            procBars.get(procBarsTable.get(Integer.valueOf(splt[1])))
-                                    .setProgress( (Double.valueOf(getDf().format(Double.valueOf(splt[3])))
-                                            - (Double.valueOf(getDf().format(Double.valueOf(splt[2])))) )
-                                            / Double.valueOf(getDf().format(Double.valueOf(splt[3]))) );
-                            labels.get(procBarsTable.get(Integer.valueOf(splt[1])))
+                            strtmp += "WaitTime:" + String.format("%.1f", waitTime) + " ";
+                            strtmp += "TrnATime:" + String.format("%.1f", turnAroundTime) + " - ";
+                            strtmp += "Priority:" + priority + " ";
+                            strtmp += "ArivTime:" + String.format("%.1f", arrivalTime) + " ";
+                            strtmp += "StartTime:" + String.format("%.1f", startTime) + " ";
+                            strtmp += "FinishTime:" + String.format("%.1f", finishTime);
+
+                            double progress =  (totalBurstTime - burstTime)
+                                    / totalBurstTime;
+
+                            procBars.get(procBarsTable.get(pid))
+                                    .setProgress(progress);
+                            labels.get(procBarsTable.get(pid))
                                     .setText(strtmp);
                             lbCurrentTime.setText(splt[0]);
                             strtmp = "";
-                        }else{
+                        } else {
                             subroot1 = new VBox();
-                            tmp = new ProgressBar((Double.valueOf(splt[3]) - Double.valueOf(splt[2]))
-                                    / Double.valueOf(splt[3]));
-                            tmp.setPrefWidth(200);
+                            double progress =  (totalBurstTime - burstTime)
+                                    / totalBurstTime;
+                            tmp = new ProgressBar(progress);
+                            tmp.setPrefWidth(400);
                             procBars.add(tmp);
-                            procBarsTable.put(Integer.valueOf(splt[1]), procBars.size()-1);
-                            subroot1.getChildren().add(procBars.get(procBars.size()-1));
+                            procBarsTable.put(pid, procBars.size() - 1);
+                            subroot1.getChildren().add(procBars.get(procBars.size() - 1));
                             strtmp = "";
-                            strtmp += " " + splt[1] + ": ";
-                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[8])) + " ";
-                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[9])) + " - ";
-                            strtmp += "Priority:" + splt[4] + " ";
-                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
-                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[6])) + " ";
-                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[7]));
+                            strtmp += " " + pid + ": ";
+                            strtmp += "WaitTime:" + String.format("%.1f", waitTime) + " ";
+                            strtmp += "TrnATime:" + String.format("%.1f", turnAroundTime) + " - ";
+                            strtmp += "Priority:" + priority + " ";
+                            strtmp += "ArivTime:" + String.format("%.1f", arrivalTime) + " ";
+                            strtmp += "StartTime:" + String.format("%.1f", startTime) + " ";
+                            strtmp += "FishTime:" + String.format("%.1f", finishTime);
                             Label label = new Label(strtmp);
                             subroot1.setPadding(new Insets(8, 8, 8, 8));
                             labels.add(label);
-                            subroot1.getChildren().add(labels.get(procBars.size()-1));
+                            subroot1.getChildren().add(labels.get(procBars.size() - 1));
 
                             strtmp = "";
                             subroot1.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID,
-                                    null,new BorderWidths(1))));
+                                    null, new BorderWidths(1))));
                             subroot1.setAlignment(Pos.BASELINE_LEFT);
                             processBox.getChildren().add(subroot1);
                         }
-                    }else{
+                    } else {
                         subroot1 = new VBox();
                         subroot1.getChildren().add(new Label("Report:\n" + FXMainController.getCpu().getReport()));
                         processBox.getChildren().add(subroot1);
@@ -315,14 +256,14 @@ public class FXMainController implements Initializable {
                         pauseResumeButton.setDisable(true);
                         stopButton.setDisable(true);
                     }
-                    lastUpdate = now;
+                    lastUpdateTime = now;
                 }
             }
         };
 
     }
 
-    private void initGiantChart(GraphicsContext gContext) {
+    private void initGanttChart(GraphicsContext gContext) {
         gContext.setFill(Color.BLACK);
         gContext.setStroke(Color.BLACK);
         gContext.setLineWidth(1f);
@@ -337,23 +278,25 @@ public class FXMainController implements Initializable {
         TableColumn<Process, String> pidCol = new TableColumn<Process, String>("PID");
         TableColumn<Process, Float> burstCol = new TableColumn<Process, Float>("Burst Time");
         TableColumn<Process, Float> delayCol = new TableColumn<Process, Float>("Delay Time");
+        TableColumn<Process, Float> arrivalCol = new TableColumn<Process, Float>("Arrival Time");
         TableColumn<Process, Integer> priorityCol = new TableColumn<Process, Integer>("Priority");
 
 
         pidCol.setCellValueFactory(new PropertyValueFactory<>("PID"));
         burstCol.setCellValueFactory(new PropertyValueFactory<>("totalBurstTime"));
         delayCol.setCellValueFactory(new PropertyValueFactory<>("delayTime"));
+        arrivalCol.setCellValueFactory(new PropertyValueFactory<>("arrivalTime"));
         priorityCol.setCellValueFactory(new PropertyValueFactory<>("priority"));
 
         tableProcess.getColumns().clear();
-        tableProcess.getColumns().addAll(pidCol, burstCol, delayCol, priorityCol);
+        tableProcess.getColumns().addAll(pidCol, burstCol, delayCol, arrivalCol, priorityCol);
     }
 
-    public static CPU getCpu() {
+    private static CPU getCpu() {
         return cpu;
     }
 
-    public static double getSpeed() {
+    private static double getSpeed() {
         return speed;
     }
 
