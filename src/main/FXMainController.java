@@ -1,17 +1,17 @@
 package main;
 
-import javafx.animation.AnimationTimer;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -21,26 +21,26 @@ import javafx.stage.Stage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
-import java.math.RoundingMode;
 import java.net.URL;
-import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class FXMainController implements Initializable {
+
+    public TableView tableProcess;
+    public Canvas canvas;
+    public Label lbCurrentTime;
     @FXML
     private Label status;
 
     @FXML
-    private Button run;
+    private Button runButton;
 
     @FXML
     private Button randomInput;
 
     @FXML
-    private Button reloadFile;
+    private Button loadFile;
 
     @FXML
     private TextArea input;
@@ -49,12 +49,10 @@ public class FXMainController implements Initializable {
     private ChoiceBox schMethod;
 
     @FXML
-    private TextField simSpeed;
+    private TextField simulationSpeed;
 
     @FXML
-    private TextField cs;
-
-    private static String prevInput = "";
+    private TextField contextSwitchTime;
 
     private static CPU cpu;
 
@@ -64,15 +62,19 @@ public class FXMainController implements Initializable {
      * Simulation Area
      */
     @FXML
-    private Button backButton;
+    private Button stopButton;
+
+    @FXML
+    private Button pauseResumeButton;
 
     @FXML
     private ScrollPane scroll;
 
+    private VBox processBox;
+
     private static long lastUpdate = 0;
     private VBox subroot1;
-    private AnimationTimer at;
-    private ArrayList<Scheduler> lvls = new ArrayList<>();
+    private SimulationCore simulationCore;
     private Map<Integer, Integer> procBarsTable = new HashMap<>();
     private ArrayList<ProgressBar> procBars = new ArrayList<>();
     private ArrayList<Label> labels = new ArrayList<>();
@@ -89,24 +91,25 @@ public class FXMainController implements Initializable {
                 status.setText("Error: Randomize First (press Random Input button)");
                 status.setTextFill(Color.RED);
             } else {
+                GraphicsContext gContext = canvas.getGraphicsContext2D();
+                gContext.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                initGiantChart(gContext);
                 cpu = new CPU(input.getText(), method);
-                prevInput = input.getText();
+                doSomeThingWithProcessList(cpu.getAllProcs());
+
                 cpu.Simulate();
-                speed = Double.parseDouble(simSpeed.getText());
-                try {
-                    Parent root = FXMLLoader.load(getClass().getResource("Simulation.fxml"));
-                    Scene scene = new Scene(root);
-                    Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-                    stage.setScene(scene);
-                    stage.show();
-                } catch (IOException ex) {
-                    Logger.getLogger(FXMainController.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                speed = Double.parseDouble(simulationSpeed.getText());
+                startSimulation();
             }
         } else {
             status.setText(validate());
             status.setTextFill(Color.RED);
         }
+    }
+
+    private void doSomeThingWithProcessList(ArrayList<Process> allProcs) {
+        ObservableList<Process> obserList = FXCollections.observableArrayList(allProcs);
+        tableProcess.setItems(obserList);
     }
 
     @FXML
@@ -124,17 +127,21 @@ public class FXMainController implements Initializable {
             }
             input.setText(res);
         } else {
-            CPU.randProc(Integer.valueOf(5));
+            CPU.randProc(5);
             String res = "";
             for (String string : cpu.getRandomData()) {
                 res += string + "\n";
             }
             input.setText(res);
         }
+
+        String method = schMethod.getValue().toString();
+        cpu = new CPU(input.getText(), method);
+        doSomeThingWithProcessList(cpu.getAllProcs());
     }
 
     @FXML
-    private void handleReloadFileButtonAction(ActionEvent event) {
+    private void handleLoadFileButtonAction(ActionEvent event) {
 
         FileChooser fileChooser = new FileChooser();
 
@@ -146,7 +153,7 @@ public class FXMainController implements Initializable {
         if (file != null) {
             String s = "", res = "";
             double burstTime = 0, delayTime = 0;
-            int priority = 0, level = 0;
+            int priority = 0;
             try {
                 BufferedReader input = new BufferedReader(new FileReader(file));
                 while ((s = input.readLine()) != null) {
@@ -154,12 +161,11 @@ public class FXMainController implements Initializable {
                     burstTime = Double.parseDouble(split[0]);
                     delayTime = Double.parseDouble(split[1]);
                     priority = Integer.parseInt(split[2]);
-                    level = Integer.parseInt(split[3]);
-                    res += burstTime + " " + delayTime + " " + priority + " " + level + "\n";
+                    res += burstTime + " " + delayTime + " " + priority + "\n";
                 }
                 this.input.setText(res);
             } catch (Exception e) {
-                status.setText("Error: Bad Input File");
+                status.setText("Error: Bad Input File Format");
                 status.setTextFill(Color.RED);
             }
         }
@@ -198,7 +204,6 @@ public class FXMainController implements Initializable {
                 return "Error: Bad Input for Random";
             }
         } else {
-            int level = 0;
             try {
                 for (String line : lines) {
                     String[] split = line.split("\\s+");
@@ -211,7 +216,7 @@ public class FXMainController implements Initializable {
             }
         }
 
-        if (Double.parseDouble(cs.getText()) < 0.4) {
+        if (Double.parseDouble(contextSwitchTime.getText()) < 0.4) {
             return "Error: minimum value for quantum is 0.4";
         }
 
@@ -220,19 +225,128 @@ public class FXMainController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
+        GraphicsContext gContext = canvas.getGraphicsContext2D();
+        initGiantChart(gContext);
+        CPU.setGraphicsContext(gContext);
 
-        input.setText(prevInput);
+        initTableProcess();
 
-        simSpeed.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(2));
-        cs.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(5));
+        simulationSpeed.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(2));
+        contextSwitchTime.addEventFilter(KeyEvent.KEY_TYPED, numericValidation(5));
 
         schMethod.getItems().removeAll(schMethod.getItems());
         schMethod.getItems().addAll("Preemptive Priority", "Priority");
         schMethod.getSelectionModel().select("Preemptive Priority");
 
+        //disable button
+        stopButton.setDisable(true);
+        pauseResumeButton.setDisable(true);
+
+        //init simualation box
+        processBox = new VBox();
+        processBox.setSpacing(5);
+        processBox.setAlignment(Pos.CENTER);
+        scroll.setContent(processBox);
+        scroll.vvalueProperty().bind(processBox.heightProperty());
+
+        simulationCore = new SimulationCore() {
+            @Override
+            public void handle(long now) {
+                if (now - lastUpdate >= 28_000_000 * (1/FXMainController.getSpeed())){
+                    ProgressBar tmp;
+                    String strtmp = "";
+                    if (getScanner().hasNextLine()) {
+                        String line = getScanner().nextLine();
+                        String[] splt = line.split("\\s+");
+                        if(procBarsTable.containsKey(Integer.valueOf(splt[1]))){
+                            strtmp = "";
+                            strtmp += splt[1] + ": ";
+                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[8])) + " ";
+                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[9])) + " - ";
+                            strtmp += "Priority:" + splt[4] + " ";
+                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
+                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[6])) + " ";
+                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[7]));
+                            procBars.get(procBarsTable.get(Integer.valueOf(splt[1])))
+                                    .setProgress( (Double.valueOf(getDf().format(Double.valueOf(splt[3])))
+                                            - (Double.valueOf(getDf().format(Double.valueOf(splt[2])))) )
+                                            / Double.valueOf(getDf().format(Double.valueOf(splt[3]))) );
+                            labels.get(procBarsTable.get(Integer.valueOf(splt[1])))
+                                    .setText(strtmp);
+                            lbCurrentTime.setText(splt[0]);
+                            strtmp = "";
+                        }else{
+                            subroot1 = new VBox();
+                            tmp = new ProgressBar((Double.valueOf(splt[3]) - Double.valueOf(splt[2]))
+                                    / Double.valueOf(splt[3]));
+                            tmp.setPrefWidth(200);
+                            procBars.add(tmp);
+                            procBarsTable.put(Integer.valueOf(splt[1]), procBars.size()-1);
+                            subroot1.getChildren().add(procBars.get(procBars.size()-1));
+                            strtmp = "";
+                            strtmp += " " + splt[1] + ": ";
+                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[8])) + " ";
+                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[9])) + " - ";
+                            strtmp += "Priority:" + splt[4] + " ";
+                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
+                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[6])) + " ";
+                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[7]));
+                            Label label = new Label(strtmp);
+                            subroot1.setPadding(new Insets(8, 8, 8, 8));
+                            labels.add(label);
+                            subroot1.getChildren().add(labels.get(procBars.size()-1));
+
+                            strtmp = "";
+                            subroot1.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID,
+                                    null,new BorderWidths(1))));
+                            subroot1.setAlignment(Pos.BASELINE_LEFT);
+                            processBox.getChildren().add(subroot1);
+                        }
+                    }else{
+                        subroot1 = new VBox();
+                        subroot1.getChildren().add(new Label("Report:\n" + FXMainController.getCpu().getReport()));
+                        processBox.getChildren().add(subroot1);
+                        getScanner().close();
+                        simulationCore.stop();
+
+                        //update ui
+                        runButton.setDisable(false);
+                        pauseResumeButton.setText("Pause");
+                        pauseResumeButton.setDisable(true);
+                        stopButton.setDisable(true);
+                    }
+                    lastUpdate = now;
+                }
+            }
+        };
+
+    }
+
+    private void initGiantChart(GraphicsContext gContext) {
+        gContext.setFill(Color.BLACK);
+        gContext.setStroke(Color.BLACK);
+        gContext.setLineWidth(1f);
+
+        double width = gContext.getCanvas().getWidth();
+        double height = gContext.getCanvas().getHeight();
+
+        gContext.strokeLine(0, height / 2, width, height / 2);
+    }
+
+    private void initTableProcess() {
+        TableColumn<Process, String> pidCol = new TableColumn<Process, String>("PID");
+        TableColumn<Process, Float> burstCol = new TableColumn<Process, Float>("Burst Time");
+        TableColumn<Process, Float> delayCol = new TableColumn<Process, Float>("Delay Time");
+        TableColumn<Process, Integer> priorityCol = new TableColumn<Process, Integer>("Priority");
 
 
-//        input.setPrefHeight(650);
+        pidCol.setCellValueFactory(new PropertyValueFactory<>("PID"));
+        burstCol.setCellValueFactory(new PropertyValueFactory<>("totalBurstTime"));
+        delayCol.setCellValueFactory(new PropertyValueFactory<>("delayTime"));
+        priorityCol.setCellValueFactory(new PropertyValueFactory<>("priority"));
+
+        tableProcess.getColumns().clear();
+        tableProcess.getColumns().addAll(pidCol, burstCol, delayCol, priorityCol);
     }
 
     public static CPU getCpu() {
@@ -248,102 +362,49 @@ public class FXMainController implements Initializable {
      */
 
     @FXML
-    private void handleBackButtonAction(ActionEvent event) {
+    private void handleStopButtonAction(ActionEvent event) {
+        simulationCore.stop();
+        stopButton.setDisable(true);
+        runButton.setDisable(false);
+        pauseResumeButton.setDisable(true);
+        pauseResumeButton.setText("Pause");
+    }
 
-        at.stop();
+    public void handlePauseResumeButtonAction(ActionEvent actionEvent) {
+        if (simulationCore.getState() == SimulationCore.SimulationState.RUNNING) {
+            simulationCore.pause();
+            pauseResumeButton.setText("Resume");
+        } else {
+            simulationCore.resume();
+            pauseResumeButton.setText("Pause");
+        }
+    }
+
+
+    private void startSimulation() {
+        //title
+        Label lbTitle = new Label();
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, hh:mm:ss aaaa");
+        String strNow = sdf.format(calendar.getTime());
+        lbTitle.setText(strNow);
+        processBox.getChildren().add(lbTitle);
+
+        //remove old data
         procBars.clear();
         procBarsTable.clear();
         labels.clear();
-        lvls.clear();
-        FXMainController.getCpu().resetSimData();
-        FXMainController.getCpu().resetReport();
-        FXMainController.getCpu().resetAll();
-
-        try {
-            Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-            Scene scene = new Scene(root);
-            Stage stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
-            stage.show();
-        } catch (IOException ex) {
-            Logger.getLogger(FXMainController.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
+        simulationCore.setData(getCpu().getSimulationData());
+        simulationCore.start();
+        stopButton.setDisable(false);
+        pauseResumeButton.setDisable(false);
+        runButton.setDisable(true);
     }
 
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
-        VBox root = new VBox();
-        root.setSpacing(5);
-        root.setAlignment(Pos.CENTER);
-        scroll.setContent(root);
-        Scanner scanner = new Scanner(FXMainController.getCpu().getSimData());
-        DecimalFormat df = new DecimalFormat("#.#");
-        df.setRoundingMode(RoundingMode.FLOOR);
-
-        at = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                if (now - lastUpdate >= 28_000_000 * (1/FXMainController.getSpeed())){
-                    ProgressBar tmp;
-                    String strtmp = "";
-                    if (scanner.hasNextLine()) {
-                        String line = scanner.nextLine();
-                        String[] splt = line.split("\\s+");
-                        if(procBarsTable.containsKey(Integer.valueOf(splt[0]))){
-                            strtmp = "";
-                            strtmp += splt[0] + ": ";
-                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[7])) + " ";
-                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[8])) + " - ";
-                            strtmp += "Priority:" + splt[3] + " ";
-                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[4])) + " ";
-                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
-                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[6]));
-                            procBars.get(procBarsTable.get(Integer.valueOf(splt[0])))
-                                    .setProgress( (Double.valueOf(df.format(Double.valueOf(splt[2])))
-                                            - (Double.valueOf(df.format(Double.valueOf(splt[1])))) )
-                                            / Double.valueOf(df.format(Double.valueOf(splt[2]))) );
-                            labels.get(procBarsTable.get(Integer.valueOf(splt[0])))
-                                    .setText(strtmp);
-                            strtmp = "";
-                        }else{
-                            subroot1 = new VBox();
-                            tmp = new ProgressBar((Double.valueOf(splt[2]) - Double.valueOf(splt[1]))
-                                    / Double.valueOf(splt[2]));
-                            tmp.setPrefWidth(200);
-                            procBars.add(tmp);
-                            procBarsTable.put(Integer.valueOf(splt[0]), procBars.size()-1);
-                            subroot1.getChildren().add(procBars.get(procBars.size()-1));
-                            strtmp = "";
-                            strtmp += " " + splt[0] + ": ";
-                            strtmp += "WaitTime:" + String.format("%.1f", Double.valueOf(splt[7])) + " ";
-                            strtmp += "TrnATime:" + String.format("%.1f", Double.valueOf(splt[8])) + " - ";
-                            strtmp += "Priority:" + splt[3] + " ";
-                            strtmp += "ArivTime:" + String.format("%.1f", Double.valueOf(splt[4])) + " ";
-                            strtmp += "StrtTime:" + String.format("%.1f", Double.valueOf(splt[5])) + " ";
-                            strtmp += "FishTime:" + String.format("%.1f", Double.valueOf(splt[6]));
-                            Label label = new Label(strtmp);
-                            subroot1.setPadding(new Insets(8, 8, 8, 8));
-                            labels.add(label);
-                            subroot1.getChildren().add(labels.get(procBars.size()-1));
-
-                            strtmp = "";
-                            subroot1.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID,
-                                    null,new BorderWidths(1))));
-                            subroot1.setAlignment(Pos.BASELINE_LEFT);
-                            root.getChildren().add(subroot1);
-                        }
-                    }else{
-                        subroot1 = new VBox();
-                        subroot1.getChildren().add(new Label("Report:\n" + FXMainController.getCpu().getReport()));
-                        root.getChildren().add(subroot1);
-                        scanner.close();
-                        at.stop();
-                    }
-                    lastUpdate = now;
-                }
-            }
-        };
-        at.start();
+    public void handleClearSimulationButtonAction(ActionEvent actionEvent) {
+        procBars.clear();
+        labels.clear();
+        procBarsTable.clear();
+        processBox.getChildren().clear();
     }
 }
