@@ -3,17 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package main;
+package tuanhc;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.Locale;
 import java.util.Random;
 
-/**
- *
- * @author soheilchangizi
- */
 public class Process {
     
     private int PID;

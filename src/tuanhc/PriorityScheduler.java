@@ -3,22 +3,19 @@
 * To change this template file, choose Tools | Templates
 * and open the template in the editor.
 */
-package main;
+package tuanhc;
 
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 
-/**
- *
- * @author soheilchangizi
- */
-public class Sch_Priority extends Scheduler{
-    
+public class PriorityScheduler {
+
+    private Process activeProc;
     private boolean preemptive;
     private PriorityQueue<Process> pq;
     
-    public Sch_Priority(boolean isPreemptive) {
+    public PriorityScheduler(boolean isPreemptive) {
         preemptive = isPreemptive;
         pq = new PriorityQueue<>(new Comparator<Process>() {
             @Override
@@ -28,26 +25,22 @@ public class Sch_Priority extends Scheduler{
         });
     }
     
-    @Override
     public void addProc(Process p) {
         pq.add(p);
     }
     
-    @Override
     public boolean removeProc(Process p) {
         return pq.remove(p);
     }
     
-    @Override
-    public void setScheduler(Scheduler method) {
+    public void setScheduler(PriorityScheduler method) {
         Iterator<Process> itr = pq.iterator();
         while(itr.hasNext()){
             method.addProc(itr.next());
             itr.remove();
         }
     }
-    
-    @Override
+
     public Process getNextProc(double currentTime) {
         if (((isPreemptive() && pq.peek().isIsArrived()) || activeProc == null || activeProc.isIsFinished())) {
             activeProc = pq.peek();
@@ -55,7 +48,6 @@ public class Sch_Priority extends Scheduler{
         return activeProc;
     }
     
-    @Override
     public String getName() {
         return !isPreemptive() ? "Priority" : "Premetive Priority";
     }
@@ -64,7 +56,6 @@ public class Sch_Priority extends Scheduler{
         return preemptive;
     }
     
-    @Override
     public boolean isProcLeft() {
         return !pq.isEmpty();
     }

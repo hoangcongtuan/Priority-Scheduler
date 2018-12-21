@@ -3,7 +3,7 @@
 * To change this template file, choose Tools | Templates
 * and open the template in the editor.
 */
-package main;
+package tuanhc;
 
 import javafx.scene.canvas.GraphicsContext;
 
@@ -11,15 +11,11 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 
-/**
- *
- * @author soheilchangizi
- */
 public class CPU {
 
     private static final double LABEL_PADDING = 50;
     private static final double POINT_SIZE = 5;
-    private Scheduler sm;
+    private PriorityScheduler scheduler;
     private double contextSwitchTime = 0.4;
     private int contextSwitchCount = 0;
     private double currentTime = 0.0;
@@ -30,14 +26,13 @@ public class CPU {
     private ArrayList<Process> procQueue = new ArrayList<>();
     private ArrayList<Process> readyQueue = new ArrayList<>();
     private static ArrayList<String> randomData = new ArrayList<>();
-    private Process previousProc = null;
+    private Process currentProc = null;
     
     private Process activeProc = null;
     
     private double averageWattingTime = 0.0;
     private double averageTurnAroundTime = 0.0;
     private double Utilization = 0.0;
-    private double Potency = 0.0;
 
     //for giant chart
     private static GraphicsContext gContext;
@@ -47,8 +42,8 @@ public class CPU {
     
     
     CPU(String data, String schName) {
-        sm = setSchMethod(schName);
-        sm.setScheduler(sm);
+        scheduler = setSchMethod(schName);
+        scheduler.setScheduler(scheduler);
         activeProc = null;
         Process proc = null;
         double burstTime = 0, delayTime = 0;
@@ -101,7 +96,7 @@ public class CPU {
             p = procQueue.get(i);
             if (p.getArrivalTime() - currentTime < 1e-1) {
                 readyQueue.add(p);
-                sm.addProc(p);
+                scheduler.addProc(p);
             }
         }
     }
@@ -112,7 +107,7 @@ public class CPU {
             p = readyQueue.get(i);
             if (p.isIsFinished() == true) {
                 readyQueue.remove(i);
-                sm.removeProc(p);
+                scheduler.removeProc(p);
             }
         }
     }
@@ -123,7 +118,7 @@ public class CPU {
             p = (Process) procQueue.get(i);
             if (p.isIsFinished() == true) {
                 procQueue.remove(i);
-                sm.removeProc(p);
+                scheduler.removeProc(p);
             }
         }
     }
@@ -131,18 +126,18 @@ public class CPU {
     void updateProcessState() {
         Process p;
         boolean needUpdateGiant = false;
-        activeProc = sm.getNextProc(currentTime);
-        if(activeProc != previousProc && previousProc != null){
+        activeProc = scheduler.getNextProc(currentTime);
+        if(activeProc != currentProc && currentProc != null){
             if(contextSwitchTime > 0.4) currentTime += (contextSwitchTime - 0.4);
             contextSwitchCount++;
             needUpdateGiant = true;
         }
         if (activeProc != null){
-            if (previousProc == null)
+            if (currentProc == null)
                 needUpdateGiant = true;
             activeProc.executing(currentTime);
             simulationData += currentTime + " " + activeProc.toString();
-            previousProc = activeProc;
+            currentProc = activeProc;
 
             if (needUpdateGiant) {
                 //swithc to another process
@@ -189,22 +184,21 @@ public class CPU {
         }
         
         Utilization = ((currentTime - (contextSwitchTime * contextSwitchCount)) / currentTime) * 100;
-        Potency = currentTime / procCount;
-        
+
         report = "averageWattingTime : " + String.format("%.1f", averageWattingTime) + "\naverageTurnAroundTime : " + String.format("%.1f", averageTurnAroundTime)
-                + "\nUtilization : " + String.format("%.1f", Utilization) + "%\nPotency : " + String.format("%.1f", Potency);
+                + "\nUtilization : " + String.format("%.1f", Utilization);
     }
     
     
-    public static Scheduler setSchMethod(String method) {
+    public static PriorityScheduler setSchMethod(String method) {
         
         String split[] = method.split(":");
         
         switch(split[0]){
             case "Preemptive Priority":
-                return new Sch_Priority(true);
+                return new PriorityScheduler(true);
             case "Priority":
-                return new Sch_Priority(false);
+                return new PriorityScheduler(false);
         }
         return null;
     }
@@ -241,14 +235,12 @@ public class CPU {
         Process p;
         
         activeProc = null;
-        sm = null;
+        scheduler = null;
         currentTime = 0;
         contextSwitchCount = 0;
         averageWattingTime = 0.0;
         averageTurnAroundTime = 0.0;
         Utilization = 0.0;
-        Potency = 0.0;
-        
         
         for (int i = 0; i < allProcs.size(); i++) {
             p = (Process) allProcs.get(i);

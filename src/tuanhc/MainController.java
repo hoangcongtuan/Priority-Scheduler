@@ -1,9 +1,8 @@
-package main;
+package tuanhc;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -12,20 +11,14 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public class FXMainController implements Initializable {
+public class MainController implements Initializable {
 
     @FXML
     public TableView tableProcess;
@@ -178,7 +171,7 @@ public class FXMainController implements Initializable {
         simulationCore = new SimulationCore() {
             @Override
             public void handle(long now) {
-                if (now - lastUpdateTime >= 28_000_000 * (1 / FXMainController.getSpeed())) {
+                if (now - lastUpdateTime >= 28_000_000 * (1 / MainController.getSpeed())) {
                     ProgressBar tmp;
                     String strtmp = "";
                     if (getScanner().hasNextLine()) {
@@ -245,7 +238,7 @@ public class FXMainController implements Initializable {
                         }
                     } else {
                         subroot1 = new VBox();
-                        subroot1.getChildren().add(new Label("Report:\n" + FXMainController.getCpu().getReport()));
+                        subroot1.getChildren().add(new Label("Report:\n" + MainController.getCpu().getReport()));
                         processBox.getChildren().add(subroot1);
                         getScanner().close();
                         simulationCore.stop();
