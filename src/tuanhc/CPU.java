@@ -39,6 +39,8 @@ public class CPU {
     private static double gWidth;
     private static double gHeight;
     private static double x_cursor = 20;
+
+    DecimalFormat df;
     
     
     CPU(String data, String schName) {
@@ -60,6 +62,9 @@ public class CPU {
             allProcs.add(proc);
         }
         initProcQueue(allProcs);
+
+        df = new DecimalFormat();
+        df.setMaximumFractionDigits(2);
     }
     
     public static void randProc(int processNum) {
@@ -128,7 +133,8 @@ public class CPU {
         boolean needUpdateGiant = false;
         activeProc = scheduler.getNextProc(currentTime);
         if(activeProc != currentProc && currentProc != null){
-            if(contextSwitchTime > 0.4) currentTime += (contextSwitchTime - 0.4);
+            if (contextSwitchTime > 0.4)
+                currentTime += (contextSwitchTime - 0.4);
             contextSwitchCount++;
             needUpdateGiant = true;
         }
@@ -145,8 +151,9 @@ public class CPU {
                 gContext.fillOval(x_cursor, gHeight / 2 - POINT_SIZE / 2, POINT_SIZE, POINT_SIZE);
 
 
+
                 gContext.fillText("P" + activeProc.getPID(), x_cursor, gHeight / 2 - 10);
-                gContext.fillText(currentTime + "", x_cursor, gHeight / 2 + 20);
+                gContext.fillText(df.format(currentTime) + "", x_cursor, gHeight / 2 + 20);
             }
         }
 
