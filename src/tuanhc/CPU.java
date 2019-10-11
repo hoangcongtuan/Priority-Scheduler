@@ -3,43 +3,49 @@
 * To change this template file, choose Tools | Templates
 * and open the template in the editor.
 */
-package main;
+package tuanhc;
+
+import javafx.scene.canvas.GraphicsContext;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Random;
 
-/**
- *
- * @author soheilchangizi
- */
 public class CPU {
-    
-    private Scheduler sm;
-    private double cs = 0.4;
-    private int csCount = 0;
+
+    private static final double LABEL_PADDING = 50;
+    private static final double POINT_SIZE = 5;
+    private PriorityScheduler scheduler;
+    private double contextSwitchTime = 0.4;
+    private int contextSwitchCount = 0;
     private double currentTime = 0.0;
-    private String simData = "";
+    private String simulationData = "";
     private String report = "";
     
     private ArrayList<Process> allProcs = new ArrayList<>();
     private ArrayList<Process> procQueue = new ArrayList<>();
     private ArrayList<Process> readyQueue = new ArrayList<>();
     private static ArrayList<String> randomData = new ArrayList<>();
-    private Process preProc = null;
+    private Process currentProc = null;
     
     private Process activeProc = null;
     
-    private double AWT = 0.0;
-    private double ATT = 0.0;
-    private double Util = 0.0;
-    private double Potency = 0.0;
+    private double averageWattingTime = 0.0;
+    private double averageTurnAroundTime = 0.0;
+    private double Utilization = 0.0;
+
+    //for giant chart
+    private static GraphicsContext gContext;
+    private static double gWidth;
+    private static double gHeight;
+    private static double x_cursor = 20;
+
+    DecimalFormat df;
     
     
     CPU(String data, String schName) {
-        sm = setSchMethod(schName);
-        sm.setScheduler(sm);
+        scheduler = setSchMethod(schName);
+        scheduler.setScheduler(scheduler);
         activeProc = null;
         Process proc = null;
         double burstTime = 0, delayTime = 0;
@@ -56,13 +62,16 @@ public class CPU {
             allProcs.add(proc);
         }
         initProcQueue(allProcs);
+
+        df = new DecimalFormat();
+        df.setMaximumFractionDigits(2);
     }
     
     public static void randProc(int processNum) {
         Process p;
         randomData.clear();
         for (int i = 0; i < processNum; i++) {
-            p = new Process(i+1, 8.33, 2.1, 2.46, 0.7);
+            p = new Process(i+1, 8, 2, 3, 1);
             randomData.add(p.getBurstTime() + " " + p.getDelayTime() 
                     + " " + p.getPriority());
         }
@@ -72,32 +81,38 @@ public class CPU {
         Process p;
         double arrivalTime = 0;
         for (int i = 0; i < allProcess.size(); i++) {
-            p = (Process) allProcess.get(i);
+            p = allProcess.get(i);
             arrivalTime += p.getDelayTime();
             p.setArrivalTime(arrivalTime);
             procQueue.add(p);
         }
     }
-    
-    private void initReadyQueue() {
+
+    public static void setGraphicsContext(GraphicsContext context) {
+        gContext = context;
+        gWidth = context.getCanvas().getWidth();
+        gHeight = context.getCanvas().getHeight();
+        x_cursor = 0;
+    }
+
+    private void updateReadyQueue() {
         Process p;
         for (int i = 0; i < procQueue.size(); i++) {
-            p = (Process) procQueue.get(i);
+            p = procQueue.get(i);
             if (p.getArrivalTime() - currentTime < 1e-1) {
                 readyQueue.add(p);
-                sm.addProc(p);
+                scheduler.addProc(p);
             }
         }
-        
     }
     
     private void refReadyQueue() {
         Process p;
         for (int i = 0; i < readyQueue.size(); i++) {
-            p = (Process) readyQueue.get(i);
+            p = readyQueue.get(i);
             if (p.isIsFinished() == true) {
                 readyQueue.remove(i);
-                sm.removeProc(p);
+                scheduler.removeProc(p);
             }
         }
     }
@@ -108,25 +123,42 @@ public class CPU {
             p = (Process) procQueue.get(i);
             if (p.isIsFinished() == true) {
                 procQueue.remove(i);
-                sm.removeProc(p);
+                scheduler.removeProc(p);
             }
         }
     }
     
-    void Schedule() {
-        Process p = null;
-        activeProc = sm.getNextProc(currentTime);
-        if(activeProc != preProc && preProc != null){
-            if(cs > 0.4) currentTime += (cs - 0.4);
-            csCount++;
+    void updateProcessState() {
+        Process p;
+        boolean needUpdateGiant = false;
+        activeProc = scheduler.getNextProc(currentTime);
+        if(activeProc != currentProc && currentProc != null){
+            if (contextSwitchTime > 0.4)
+                currentTime += (contextSwitchTime - 0.4);
+            contextSwitchCount++;
+            needUpdateGiant = true;
         }
         if (activeProc != null){
+            if (currentProc == null)
+                needUpdateGiant = true;
             activeProc.executing(currentTime);
-            simData += activeProc.toString();
-            preProc = activeProc;
+            simulationData += currentTime + " " + activeProc.toString();
+            currentProc = activeProc;
+
+            if (needUpdateGiant) {
+                //swithc to another process
+                x_cursor += LABEL_PADDING;
+                gContext.fillOval(x_cursor, gHeight / 2 - POINT_SIZE / 2, POINT_SIZE, POINT_SIZE);
+
+
+
+                gContext.fillText("P" + activeProc.getPID(), x_cursor, gHeight / 2 - 10);
+                gContext.fillText(df.format(currentTime) + "", x_cursor, gHeight / 2 + 20);
+            }
         }
+
         for (int i = 0; i < readyQueue.size(); ++i) {
-            p = (Process) readyQueue.get(i);
+            p = readyQueue.get(i);
             if (p.getPID() != activeProc.getPID()) {
                 p.waiting(currentTime);
             }
@@ -139,42 +171,41 @@ public class CPU {
         int procCount = 0;
         
         for (int i = 0; i < allProcs.size(); i++) {
-            p = (Process) allProcs.get(i);
+            p = allProcs.get(i);
             
             if (p.isIsFinished()) {
                 procCount++;
                 double waited = p.getWaitTime();
                 double turned = p.getTurnAroundTime();
-                AWT += waited;
-                ATT += turned;
+                averageWattingTime += waited;
+                averageTurnAroundTime += turned;
             }
         }
         
         if (procCount > 0) {
-            AWT /= (double) procCount;
-            ATT /= (double) procCount;
+            averageWattingTime /= (double) procCount;
+            averageTurnAroundTime /= (double) procCount;
         } else {
-            AWT = 0.0;
-            ATT = 0.0;
+            averageWattingTime = 0.0;
+            averageTurnAroundTime = 0.0;
         }
         
-        Util = ((currentTime - (cs * csCount)) / currentTime) * 100;
-        Potency = currentTime / procCount;
-        
-        report = "AWT : " + String.format("%.1f", AWT) + "\nATT : " + String.format("%.1f", ATT)
-                + "\nUtil : " + String.format("%.1f", Util) + "%\nPotency : " + String.format("%.1f", Potency);
+        Utilization = ((currentTime - (contextSwitchTime * contextSwitchCount)) / currentTime) * 100;
+
+        report = "averageWattingTime : " + String.format("%.1f", averageWattingTime) + "\naverageTurnAroundTime : " + String.format("%.1f", averageTurnAroundTime)
+                + "\nUtilization : " + String.format("%.1f", Utilization);
     }
     
     
-    public static Scheduler setSchMethod(String method) {
+    public static PriorityScheduler setSchMethod(String method) {
         
         String split[] = method.split(":");
         
         switch(split[0]){
             case "Preemptive Priority":
-                return new Sch_Priority(true);
+                return new PriorityScheduler(true);
             case "Priority":
-                return new Sch_Priority(false);
+                return new PriorityScheduler(false);
         }
         return null;
     }
@@ -182,24 +213,24 @@ public class CPU {
     
     public void Simulate(){
         
-        boolean check;
-        check = true;
-        DecimalFormat df = new DecimalFormat("#.##");
-        df.setRoundingMode(RoundingMode.FLOOR);
+        boolean check = true;
+        DecimalFormat df = new DecimalFormat("#.#");
+        df.setRoundingMode(RoundingMode.HALF_UP);
         
         while(check){
             if (procQueue.isEmpty()) {
                 check = false;
             } else {
-                initReadyQueue();
+                updateReadyQueue();
                 check = true;
                 if (!readyQueue.isEmpty()) {
-                    Schedule();
+                    updateProcessState();
                     refProcQueue();
                     refReadyQueue();
                 }
                 currentTime+=1e-1;
                 currentTime = Double.valueOf(df.format(currentTime));
+                System.out.println("Current Time " + currentTime);
             }
         }
         report();
@@ -211,14 +242,12 @@ public class CPU {
         Process p;
         
         activeProc = null;
-        sm = null;
+        scheduler = null;
         currentTime = 0;
-        csCount = 0;
-        AWT = 0.0;
-        ATT = 0.0;
-        Util = 0.0;
-        Potency = 0.0;
-        
+        contextSwitchCount = 0;
+        averageWattingTime = 0.0;
+        averageTurnAroundTime = 0.0;
+        Utilization = 0.0;
         
         for (int i = 0; i < allProcs.size(); i++) {
             p = (Process) allProcs.get(i);
@@ -228,6 +257,8 @@ public class CPU {
         procQueue.clear();
         readyQueue.clear();
         initProcQueue(allProcs);
+
+        x_cursor = 20;
     }
     
     public Process getActiveProc() {
@@ -238,8 +269,8 @@ public class CPU {
         return currentTime;
     }
     
-    public String getSimData() {
-        return simData;
+    public String getSimulationData() {
+        return simulationData;
     }
     
     public String getReport() {
@@ -247,15 +278,15 @@ public class CPU {
     }
     
     public void resetSimData(){
-        this.simData = "";
+        this.simulationData = "";
     }
     
     public void resetReport(){
         this.report = "";
     }
     
-    public void setCs(double cs) {
-        if(cs > 0.4) this.cs = cs;
+    public void setContextSwitchTime(double contextSwitchTime) {
+        if(contextSwitchTime > 0.4) this.contextSwitchTime = contextSwitchTime;
     }
 
     public ArrayList<Process> getAllProcs() {

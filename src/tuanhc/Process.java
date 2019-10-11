@@ -3,16 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package main;
+package tuanhc;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
+import java.util.Locale;
 import java.util.Random;
 
-/**
- *
- * @author soheilchangizi
- */
 public class Process {
     
     private int PID;
@@ -40,10 +37,11 @@ public class Process {
         Random gen = new Random(System.nanoTime());
         DecimalFormat df = new DecimalFormat("#.#");
         df.setRoundingMode(RoundingMode.CEILING);
-        
-        burstTime = Double.valueOf(df.format(gen.nextGaussian() * stddevB + meanB));
+
+        burstTime = (int)(gen.nextGaussian() * stddevB + meanB);
+
         totalBurstTime = burstTime;
-        delayTime = Double.valueOf(df.format(gen.nextGaussian() * stddevD + meanD));
+        delayTime = (int)(gen.nextGaussian() * stddevD + meanD);
         priority = (int) Math.round((Math.random() * 9));
     }
     
@@ -64,13 +62,13 @@ public class Process {
         
         if( Math.abs(burstTime - totalBurstTime) < 1e-1){
             isStarted = true;
-            startTime = timeNow;
+            startTime = timeNow - 1e-1;
             responseTime = startTime - arrivalTime;
+            System.out.println(String.format(Locale.US, "PID %d, start time = %f", getPID(), startTime));
         }
-        
-        
+
         if(curTime != timeNow){
-            burstTime-=1e-1;
+            burstTime -= 1e-1;
             turnAroundTime+=1e-1;
         }
         
